@@ -1,0 +1,68 @@
+name: Build, Push to GHCR and Deploy to Portainer
+
+on:
+  push:
+    branches:
+      - test
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  PORTAINER_WEBHOOK_URL: ${{ secrets.PORTAINER_WEBHOOK_URL }}
+
+jobs:
+  build-and-deploy:
+    name: Build, Push and Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 1. Convert repository name to lowercase (GHCR only accepts lowercase image names/tags)
+      - name: Set up Docker image name
+        run: |
+          echo "IMAGE_NAME=ghcr.io/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      # 2. Log in to GitHub Container Registry (GHCR)
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 3. Build and push the secure Docker image
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      # 4. Update the image tag in docker-compose.yml to the new commit SHA
+      - name: Update image tag in docker-compose.yml
+        run: |
+          sed -i "s|image: .*|image: ${{ env.IMAGE_NAME }}:${{ github.sha }}|g" docker-compose.yml
+
+      # 5. Commit and push the docker-compose.yml change, preventing pipeline loop with [skip ci]
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add docker-compose.yml
+          git commit -m "ci: update image tag to ${{ github.sha }} [skip ci]"
+          git push
+
+      # 6. Trigger Portainer Webhook through Cloudflare Access Tunnel using Service Token
+      - name: Trigger Portainer Webhook
+        run: |
+          curl -X POST \
+            -H "CF-Access-Client-Id: ${{ secrets.CF_ACCESS_CLIENT_ID }}" \
+            -H "CF-Access-Client-Secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}" \
+            "${{ env.PORTAINER_WEBHOOK_URL }}"

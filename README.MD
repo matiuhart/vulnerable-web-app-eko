@@ -6,7 +6,6 @@ Pasos:
 
 Forkear el Repo
 
-
 ### Ahora vamos a Heroku
 
 Crear cuenta, logearse y descargar heroku cli  https://id.heroku.com/

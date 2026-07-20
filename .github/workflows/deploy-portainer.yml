@@ -65,4 +65,5 @@ jobs:
           curl -X POST \
             -H "CF-Access-Client-Id: ${{ secrets.CF_ACCESS_CLIENT_ID }}" \
             -H "CF-Access-Client-Secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}" \
+            -H "Content-Type: application/json" \
             "${{ env.PORTAINER_WEBHOOK_URL }}"

@@ -60,7 +60,6 @@ jobs:
           git commit -m "ci: update image tag to ${{ github.sha }} [skip ci]"
           git push
 
-      # 6. Trigger Portainer Webhook through Cloudflare Access Tunnel using Service Token
       - name: Trigger Portainer Webhook
         run: |
           curl -X POST \

@@ -1,6 +1,6 @@
 services:
   web:
-    image: ghcr.io/matiuhart/vulnerable-web-app-eko:794524180257b7e2674acb2e52463f8d65f076dd
+    image: ghcr.io/matiuhart/vulnerable-web-app-eko:16598197532ee08a4d269a33c189e2da2fe2eee3
     container_name: vulnerable-app
     ports:
       - "8080:8080"

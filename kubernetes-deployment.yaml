@@ -58,7 +58,7 @@ spec:
       paths:
       - backend:
           service:
-            name: vaultwarden
+            name: vulnerable-app-svc
             port:
               name: http
         path: /

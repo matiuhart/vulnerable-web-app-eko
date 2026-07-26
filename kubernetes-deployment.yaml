@@ -36,7 +36,7 @@ spec:
   selector:
     app: vulnerable-app
   ports:
-    - port: 8080
+    - port: 9080
       targetPort: 8080
       protocol: TCP
       name: http

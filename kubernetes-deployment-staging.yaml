@@ -65,7 +65,6 @@ metadata:
     traefik.ingress.kubernetes.io/router.tls: "true"
     traefik.ingress.kubernetes.io/router.tls.certresolver: cloudflare
   name: vulnerable-app
-  namespace: eko
 spec:
   ingressClassName: traefik
   rules:

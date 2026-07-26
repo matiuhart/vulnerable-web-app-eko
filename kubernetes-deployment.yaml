@@ -17,13 +17,14 @@ spec:
     spec:
       containers:
       - name: vulnerable-app
-        image: ghcr.io/matiuhart/vulnerable-web-app-eko:sha-a26f855677bb16a181966fae53d74d102b68aa4e
+        image: ghcr.io/matiuhart/vulnerable-web-app-eko:sha-f3831c957a604523063f01a7bf1db735b7dea156
         ports:
         - containerPort: 8080
           name: http
         env:
         - name: NODE_ENV
           value: "production"
+---
 ---
 apiVersion: v1
 kind: Service
@@ -40,3 +41,4 @@ spec:
       targetPort: 8080
       protocol: TCP
       name: http
+      nodePort: 30080

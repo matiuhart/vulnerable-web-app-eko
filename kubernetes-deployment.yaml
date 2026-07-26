@@ -25,7 +25,6 @@ spec:
         - name: NODE_ENV
           value: "production"
 ---
----
 apiVersion: v1
 kind: Service
 metadata:
@@ -33,12 +32,37 @@ metadata:
   labels:
     app: vulnerable-app
 spec:
-  type: NodePort
+  type: ClusterIP
   selector:
     app: vulnerable-app
   ports:
-    - port: 9080
+    - port: 8080
       targetPort: 8080
       protocol: TCP
       name: http
-      nodePort: 30080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.certresolver: cloudflare
+  name: vulnerable-app
+  namespace: eko
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: matias-uhart.mtu-it.com.ar
+    http:
+      paths:
+      - backend:
+          service:
+            name: vaultwarden
+            port:
+              name: http
+        path: /
+        pathType: Prefix
+  tls:
+  - hosts:
+    - matias-uhart.mtu-it.com.ar

@@ -173,6 +173,7 @@ jobs:
           target: ${{ env.STAGING_URL }}
           # Inyectamos el archivo de propiedades para que ZAP envíe las cabeceras de Cloudflare en cada petición
           cmd_options: "-z 'config: -config-file zap-headers.prop'"
+          issue_absence: false
           fail_action: false
 
   deploy-prod:

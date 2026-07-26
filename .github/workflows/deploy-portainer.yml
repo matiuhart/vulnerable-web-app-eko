@@ -1,8 +1,7 @@
 name: Build, Push to GHCR and Deploy to Portainer
-
 on:
   push:
-    branches:
+    branches: 
       - master
   workflow_dispatch:
 
@@ -12,50 +11,56 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
   PORTAINER_WEBHOOK_URL: ${{ secrets.PORTAINER_WEBHOOK_URL }}
 
 jobs:
   build-and-deploy:
     name: Build, Push and Deploy
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Code
+      - name: Checkout del código
         uses: actions/checkout@v4
 
-      - name: Set up Docker image name
-        run: |
-          echo "IMAGE_NAME=ghcr.io/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
-
-      - name: Log in to GHCR
+      - name: Login en GitHub Container Registry (GHCR)
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Push Docker Image
+      - name: Extraer metadatos para Docker (Tags)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=sha,format=long
+
+      - name: Construir y pushear imagen Docker
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: |
-            ${{ env.IMAGE_NAME }}:latest
-            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
 
-      - name: Update image tag in docker-compose.yml
+      - name: Actualizar versión de imagen en manifiesto Kubernetes
         run: |
-          sed -i "s|image: .*|image: ${{ env.IMAGE_NAME }}:${{ github.sha }}|g" docker-compose.yml
-
-      - name: Commit and push changes
-        run: |
+          NUEVA_IMAGEN="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${GITHUB_SHA}"
+          
+          sed -i "s|image: .*|image: $NUEVA_IMAGEN|g" kubernetes-deployment.yaml
+          
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add docker-compose.yml
-          git commit -m "ci: update image tag to ${{ github.sha }} [skip ci]"
-          git push
+          
+          git add kubernetes-deployment.yaml
+          git commit -m "Bump de version de imagen a sha-${GITHUB_SHA} en manifiesto de despliegue [skip ci]" || echo "No hubo cambios para commitear"
+          git push origin master
 
       - name: Trigger Portainer Webhook
+        if: success()
         run: |
           curl -X POST \
             -H "CF-Access-Client-Id: ${{ secrets.CF_ACCESS_CLIENT_ID }}" \

@@ -1,0 +1,42 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vulnerable-app
+  labels:
+    app: vulnerable-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vulnerable-app
+  template:
+    metadata:
+      labels:
+        app: vulnerable-app
+    spec:
+      containers:
+      - name: vulnerable-app
+        image: ghcr.io/matiuhart/vulnerable-web-app-eko:aa62b0a57c3173d3ff7cc60d0818688ab9368779
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: NODE_ENV
+          value: "production"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vulnerable-app-svc
+  labels:
+    app: vulnerable-app
+spec:
+  type: ClusterIP
+  selector:
+    app: vulnerable-app
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http

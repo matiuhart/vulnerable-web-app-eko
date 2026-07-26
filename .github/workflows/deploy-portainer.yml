@@ -182,6 +182,18 @@ jobs:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Actualizar versión en manifiesto Kubernetes
+        run: |
+          NUEVA_IMAGEN="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}"
+          sed -i "s|image: .*|image: $NUEVA_IMAGEN|g" kubernetes-deployment.yaml
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add kubernetes-deployment.yaml
+          git commit -m "Bump de version de imagen a sha-${{ github.sha }} [skip ci]" || echo "No hubo cambios"
+          git push origin master
       - name: Trigger Portainer PROD Webhook
         run: |
           curl -X POST \

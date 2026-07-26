@@ -1,0 +1,84 @@
+---
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vulnerable-app
+  labels:
+    app: vulnerable-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vulnerable-app
+  template:
+    metadata:
+      labels:
+        app: vulnerable-app
+    spec:
+      containers:
+      - name: vulnerable-app
+        image: ghcr.io/matiuhart/vulnerable-web-app-eko:sha-7a6d905b88b6bcd30a00f948362a1a8d2ebec269
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: NODE_ENV
+          value: "production"
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "250m"
+            memory: "256Mi"
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vulnerable-app-svc
+  labels:
+    app: vulnerable-app
+spec:
+  type: ClusterIP
+  selector:
+    app: vulnerable-app
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.certresolver: cloudflare
+  name: vulnerable-app
+  namespace: eko
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: matias-uhart-stg.mtu-it.com.ar
+    http:
+      paths:
+      - backend:
+          service:
+            name: vulnerable-app-svc
+            port:
+              name: http
+        path: /
+        pathType: Prefix
+  tls:
+  - hosts:
+    - matias-uhart-stg.mtu-it.com.ar

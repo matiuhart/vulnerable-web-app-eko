@@ -36,7 +36,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   
   # Cambiar a "true" para debug o bypass por hallazgos
-  security_sast_semgrep:
+  sast-scan:
     name: Security Semgrep
     runs-on: ubuntu-latest
     steps:
@@ -51,6 +51,7 @@ jobs:
         - name: Install dependencies
           run: |
               pip install semgrep
+
         - name: Run Semgrep
           run: |
               semgrep ci --config=p/javascript --config=p/security-audit . --json --output semgrep-report.json || true

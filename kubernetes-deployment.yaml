@@ -32,7 +32,7 @@ metadata:
   labels:
     app: vulnerable-app
 spec:
-  type: ClusterIP
+  type: NodePort
   selector:
     app: vulnerable-app
   ports:

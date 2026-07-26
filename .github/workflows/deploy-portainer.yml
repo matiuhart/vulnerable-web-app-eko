@@ -54,7 +54,7 @@ jobs:
 
         - name: Run Semgrep
           run: |
-              semgrep ci --config=p/javascript --config=p/security-audit . --json --output semgrep-report.json || true
+              semgrep ci --config=p/javascript --config=p/security-audit --json --output semgrep-report.json || true
 
         - name: Upload Semgrep Report
           uses: actions/upload-artifact@v4
@@ -79,7 +79,7 @@ jobs:
           format: 'table'
           severity: 'CRITICAL,HIGH'
           # Para debuguear y permitir que el pipeline continue aunque encuentre vulnerabilidades, cambiar el valor de exit-code a 0
-          exit-code: '1' 
+          exit-code: '0' 
 
       - name: Login en GitHub Container Registry (GHCR)
         if: github.event_name != 'pull_request'

@@ -152,6 +152,8 @@ jobs:
             -H "CF-Access-Client-Secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}" \
             -H "Content-Type: application/json" \
             "${{ env.PORTAINER_WEBHOOK_STAGING }}"
+        env:
+          PORTAINER_WEBHOOK_STAGING: ${{ secrets.PORTAINER_WEBHOOK_URL_STAGING }}
 
   dast-scan:
     name: Scan DAST (OWASP ZAP)
@@ -183,4 +185,6 @@ jobs:
             -H "CF-Access-Client-Id: ${{ secrets.CF_ACCESS_CLIENT_ID }}" \
             -H "CF-Access-Client-Secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}" \
             -H "Content-Type: application/json" \
-            "${{ env.PORTAINER_WEBHOOK_PROD }}"
+            "${{ env.PORTAINER_WEBHOOK }}"
+        env:
+          PORTAINER_WEBHOOK_STAGING: ${{ secrets.PORTAINER_WEBHOOK_URL }}

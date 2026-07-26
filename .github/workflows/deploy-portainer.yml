@@ -3,11 +3,15 @@ on:
   push:
     branches: 
       - master
+  pull_request:
+    branches:
+      - master
   workflow_dispatch:
 
 permissions:
   contents: write
   packages: write
+  security-events: write
 
 env:
   REGISTRY: ghcr.io
@@ -15,14 +19,23 @@ env:
   PORTAINER_WEBHOOK_URL: ${{ secrets.PORTAINER_WEBHOOK_URL }}
 
 jobs:
-  build-and-deploy:
-    name: Build, Push and Deploy
+  security-and-build:
+    name: Security Scans, Build and Push
     runs-on: ubuntu-latest
     steps:
       - name: Checkout del código
         uses: actions/checkout@v4
 
+      - name: Escaneo de vulnerabilidades en código y dependencias con Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          ignore-unfixed: true
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+
       - name: Login en GitHub Container Registry (GHCR)
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -38,7 +51,25 @@ jobs:
             type=raw,value=latest
             type=sha,format=long
 
-      - name: Construir y pushear imagen Docker
+      - name: Construir imagen Docker (solo en local para escaneo)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          load: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Escaneo de vulnerabilidades en Imagen Docker con Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${GITHUB_SHA}
+          format: 'table'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+
+      - name: Pushear imagen Docker
+        if: github.event_name != 'pull_request'
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -46,21 +77,26 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+  deploy:
+    name: Deploy to K8s & Portainer
+    needs: security-and-build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
       - name: Actualizar versión de imagen en manifiesto Kubernetes
         run: |
           NUEVA_IMAGEN="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${GITHUB_SHA}"
-          
           sed -i "s|image: .*|image: $NUEVA_IMAGEN|g" kubernetes-deployment.yaml
-          
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          
           git add kubernetes-deployment.yaml
-          git commit -m "Bump de version de imagen a sha-${GITHUB_SHA} en manifiesto de despliegue [skip ci]" || echo "No hubo cambios para commitear"
+          git commit -m "Bump de version de imagen a sha-${GITHUB_SHA} [skip ci]" || echo "No hubo cambios"
           git push origin master
 
       - name: Trigger Portainer Webhook
-        if: success()
         run: |
           curl -X POST \
             -H "CF-Access-Client-Id: ${{ secrets.CF_ACCESS_CLIENT_ID }}" \

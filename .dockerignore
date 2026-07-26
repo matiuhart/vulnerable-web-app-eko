@@ -7,3 +7,4 @@ docker-compose.yml
 .dockerignore
 README.MD
 CONTROL_DE_CAMBIOS.md
+kubernetes-deployment.yaml

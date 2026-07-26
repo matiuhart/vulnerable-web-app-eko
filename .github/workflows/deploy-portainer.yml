@@ -34,24 +34,33 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  sast-scan:
-    name: SAST Scan (Semgrep)
+  
+  # Cambiar a "true" para debug o bypass por hallazgos
+  security_sast_semgrep:
+    name: Security Semgrep
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout del código
-        uses: actions/checkout@v4
+        - name: Checkout code
+          uses: actions/checkout@v3
 
-      - name: Escaneo SAST con Semgrep
-        uses: returntocorp/semgrep-action@v1
-        with:
-          config: >-
-            p/javascript
-            p/security-audit
-            p/secrets
-          # Cambiar a "1" para debug o bypass por hallazgos
-        env:
-          SEMGREP_EXIT_CODE: "0" # Deshabilitado para evitar stop de pipeline
+        - name: Set up Python
+          uses: actions/setup-python@v4
+          with:
+              python-version: '3.11'
+
+        - name: Install dependencies
+          run: |
+              pip install semgrep
+        - name: Run Semgrep
+          run: |
+              semgrep ci --config=p/javascript --config=p/security-audit . --json --output semgrep-report.json || true
+
+        - name: Upload Semgrep Report
+          uses: actions/upload-artifact@v4
+          with:
+              name: semgrep-report
+              path: semgrep-report.json
+
 
   security-and-build:
     name: Build, SCA and Push

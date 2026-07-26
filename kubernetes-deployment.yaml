@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: vulnerable-app
-        image: ghcr.io/matiuhart/vulnerable-web-app-eko:aa62b0a57c3173d3ff7cc60d0818688ab9368779
+        image: ghcr.io/matiuhart/vulnerable-web-app-eko:sha-f3831c957a604523063f01a7bf1db735b7dea156
         ports:
         - containerPort: 8080
           name: http

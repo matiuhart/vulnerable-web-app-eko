@@ -162,28 +162,29 @@ jobs:
           echo "Dando 45 segundos para que K8s y Portainer levanten la nueva versión en Staging..."
           sleep 45 
 
-      - name: Crear archivo de cabeceras para Cloudflare Access
-        run: |
-          echo "HEADER.1=CF-Access-Client-Id: ${{ secrets.CF_ACCESS_CLIENT_ID }}" > ./zap-headers.prop
-          echo "HEADER.2=CF-Access-Client-Secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}" >> ./zap-headers.prop
-
       - name: Escaneo DAST con OWASP ZAP (Baseline)
         uses: zaproxy/action-baseline@v0.12.0
+        env:
+          # Inyección nativa de cabeceras de Cloudflare Access en ZAP
+          ZAP_AUTH_HEADER: "CF-Access-Client-Id"
+          ZAP_AUTH_HEADER_VALUE: "${{ secrets.CF_ACCESS_CLIENT_ID }}"
+          ZAP_AUTH_HEADER_SITE: "${{ env.STAGING_URL }}"
         with:
           target: ${{ env.STAGING_URL }}
-
-          cmd_options: "-z 'config: config-file /zap/wrk/zap-headers.prop'"
-          fail_action: false
+          # Mapeamos la segunda cabecera (Secret) directo a través de cmd_options sin comillas problemáticas
+          cmd_options: "-z '-config replacer.full_list(0).description=CF-Secret -z -config replacer.full_list(0).enabled=true -z -config replacer.full_list(0).matchtype=REQ_HEADER -z -config replacer.full_list(0).matchstr=CF-Access-Client-Secret -z -config replacer.full_list(0).regex=false -z -config replacer.full_list(0).replacement=${{ secrets.CF_ACCESS_CLIENT_SECRET }}'"
           allow_issue_writing: false
+          artifact_name: "zap-scan-report" # <--- Soluciona el error del artifact zap_scan
+          fail_action: false
 
-      - name: Subir Reporte DAST
-        uses: actions/upload-artifact@v4
-        with:
-          name: zap-scan-report
-          path: |
-            report_html.html
-            report_json.json
-            report_md.md
+      # - name: Subir Reporte DAST
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: zap-scan-report
+      #     path: |
+      #       report_html.html
+      #       report_json.json
+      #       report_md.md
        
   deploy-prod:
     name: Despliegue a Produccion

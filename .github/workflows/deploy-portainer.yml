@@ -162,29 +162,46 @@ jobs:
           echo "Dando 45 segundos para que K8s y Portainer levanten la nueva versión en Staging..."
           sleep 45 
 
-      - name: Escaneo DAST con OWASP ZAP (Baseline)
-        uses: zaproxy/action-baseline@v0.12.0
+      - name: Ejecutar ZAP DAST en Docker con Cloudflare Access
         env:
-          # Inyección nativa de cabeceras de Cloudflare Access en ZAP
-          ZAP_AUTH_HEADER: "CF-Access-Client-Id"
-          ZAP_AUTH_HEADER_VALUE: "${{ secrets.CF_ACCESS_CLIENT_ID }}"
-          ZAP_AUTH_HEADER_SITE: "${{ env.STAGING_URL }}"
-        with:
-          target: ${{ env.STAGING_URL }}
-          # Mapeamos la segunda cabecera (Secret) directo a través de cmd_options sin comillas problemáticas
-          cmd_options: "-z '-config replacer.full_list(0).description=CF-Secret -z -config replacer.full_list(0).enabled=true -z -config replacer.full_list(0).matchtype=REQ_HEADER -z -config replacer.full_list(0).matchstr=CF-Access-Client-Secret -z -config replacer.full_list(0).regex=false -z -config replacer.full_list(0).replacement=${{ secrets.CF_ACCESS_CLIENT_SECRET }}'"
-          allow_issue_writing: false
-          artifact_name: "zap-scan-report" # <--- Soluciona el error del artifact zap_scan
-          fail_action: false
+          DAST_TARGET_URL: ${{ env.STAGING_URL }}
+          CF_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+        run: |
+          test -n "${DAST_TARGET_URL}" || (echo "Falta DAST_TARGET_URL" && exit 1)
+          test -n "${CF_CLIENT_ID}" || (echo "Falta CF_CLIENT_ID" && exit 1)
+          test -n "${CF_CLIENT_SECRET}" || (echo "Falta CF_CLIENT_SECRET" && exit 1)
+          
+          mkdir -p reports
+          chmod 777 reports
+          
+          docker run --rm \
+            -v "$(pwd)/reports:/zap/wrk:rw" \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py \
+            -t "${DAST_TARGET_URL}" \
+            -x zap-report.xml \
+            -r zap-report.html \
+            -I \
+            -z "-config replacer.full_list(0).description=CF_ID -config replacer.full_list(0).enabled=true -config replacer.full_list(0).matchtype=req_header -config replacer.full_list(0).matchstr=CF-Access-Client-Id -config replacer.full_list(0).regex=false -config replacer.full_list(0).replacement=${CF_CLIENT_ID} -config replacer.full_list(1).description=CF_SECRET -config replacer.full_list(1).enabled=true -config replacer.full_list(1).matchtype=req_header -config replacer.full_list(1).matchstr=CF-Access-Client-Secret -config replacer.full_list(1).regex=false -config replacer.full_list(1).replacement=${CF_CLIENT_SECRET}" || true
 
-      # - name: Subir Reporte DAST
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: zap-scan-report
-      #     path: |
-      #       report_html.html
-      #       report_json.json
-      #       report_md.md
+          HIGH=$(grep -o 'riskcode="3"' reports/zap-report.xml | wc -l | tr -d ' ')
+          CRIT=$(grep -o 'riskcode="4"' reports/zap-report.xml | wc -l | tr -d ' ')
+          echo "High: ${HIGH}"
+          echo "Critical: ${CRIT}"
+          if [ "${HIGH}" -gt 0 ] || [ "${CRIT}" -gt 0 ]; then
+            echo "DAST failed: se encontraron hallazgos High/Critical"
+            exit 1
+          fi
+
+      - name: Subir Reportes DAST como Artefacto
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zap-dast-report
+          path: |
+            reports/zap-report.xml
+            reports/zap-report.html
        
   deploy-prod:
     name: Despliegue a Produccion

@@ -164,18 +164,27 @@ jobs:
 
       - name: Crear archivo de cabeceras para Cloudflare Access
         run: |
-          echo "HEADER.1=CF-Access-Client-Id: ${{ secrets.CF_ACCESS_CLIENT_ID }}" > zap-headers.prop
-          echo "HEADER.2=CF-Access-Client-Secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}" >> zap-headers.prop
+          echo "HEADER.1=CF-Access-Client-Id: ${{ secrets.CF_ACCESS_CLIENT_ID }}" > ./zap-headers.prop
+          echo "HEADER.2=CF-Access-Client-Secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}" >> ./zap-headers.prop
 
       - name: Escaneo DAST con OWASP ZAP (Baseline)
         uses: zaproxy/action-baseline@v0.12.0
         with:
           target: ${{ env.STAGING_URL }}
-          # Inyectamos el archivo de propiedades para que ZAP envíe las cabeceras de Cloudflare en cada petición
-          cmd_options: "-z 'config: -config-file zap-headers.prop'"
-          allow_issue_writing: false
-          fail_action: false
 
+          cmd_options: "-z 'config: config-file /zap/wrk/zap-headers.prop'"
+          fail_action: false
+          allow_issue_writing: false
+
+      - name: Subir Reporte DAST
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-scan-report
+          path: |
+            report_html.html
+            report_json.json
+            report_md.md
+       
   deploy-prod:
     name: Despliegue a Produccion
     needs: dast-scan

@@ -36,14 +36,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   sast-scan:
-    name: Scan SAST (Semgrep)
+    name: SAST Scan (Semgrep)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout del código
         uses: actions/checkout@v4
 
       - name: Escaneo SAST con Semgrep
-        uses: semgrep/action@v1
+        uses: returntocorp/semgrep-action@v1
         with:
           config: >-
             p/javascript

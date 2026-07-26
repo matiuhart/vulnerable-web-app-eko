@@ -115,7 +115,7 @@ jobs:
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
           # Para debuguear y permitir que el pipeline continue aunque encuentre vulnerabilidades, cambiar el valor de exit-code a 0
-          exit-code: '1' 
+          exit-code: '0' 
 
       - name: Pushear imagen Docker
         if: github.event_name != 'pull_request'

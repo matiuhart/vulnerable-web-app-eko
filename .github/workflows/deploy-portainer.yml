@@ -63,7 +63,7 @@ jobs:
       - name: Escaneo de vulnerabilidades en Imagen Docker con Trivy
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${GITHUB_SHA}
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
           format: 'table'
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'

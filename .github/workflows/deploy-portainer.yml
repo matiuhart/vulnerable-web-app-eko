@@ -17,8 +17,6 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
   STAGING_URL: ${{ vars.STAGING_URL }}
-  # PORTAINER_WEBHOOK_STAGING: ${{ secrets.PORTAINER_WEBHOOK_URL_STAGING }}
-  # PORTAINER_WEBHOOK_PROD: ${{ secrets.PORTAINER_WEBHOOK_URL_PROD }}
 
 jobs:
   secret-scan:
@@ -164,11 +162,17 @@ jobs:
           echo "Dando 45 segundos para que K8s y Portainer levanten la nueva versión en Staging..."
           sleep 45 
 
+      - name: Crear archivo de cabeceras para Cloudflare Access
+        run: |
+          echo "HEADER.1=CF-Access-Client-Id: ${{ secrets.CF_ACCESS_CLIENT_ID }}" > zap-headers.prop
+          echo "HEADER.2=CF-Access-Client-Secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}" >> zap-headers.prop
+
       - name: Escaneo DAST con OWASP ZAP (Baseline)
         uses: zaproxy/action-baseline@v0.12.0
         with:
           target: ${{ env.STAGING_URL }}
-          # Setear en "false" para debug y bypass de fallo por hallazgos
+          # Inyectamos el archivo de propiedades para que ZAP envíe las cabeceras de Cloudflare en cada petición
+          cmd_options: "-z 'config: -config-file zap-headers.prop'"
           fail_action: false
 
   deploy-prod:

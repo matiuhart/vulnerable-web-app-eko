@@ -42,7 +42,7 @@ jobs:
   
   # Cambiar a "true" para debug o bypass por hallazgos
   sast-scan:
-    name: Security Semgrep
+    name: Escaneo SAST (Semgrep)
     runs-on: ubuntu-latest
     steps:
         - name: Checkout code
